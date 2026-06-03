@@ -1,15 +1,23 @@
 // ===== ЭЛЕМЕНТЫ =====
-const canvas     = document.getElementById("game");
-const ctx        = canvas.getContext("2d");
-const scoreEl    = document.getElementById("scoreDisplay");
-const messageEl  = document.getElementById("message");
-const restartBtn = document.getElementById("restartBtn");
-const pauseBtn   = document.getElementById("pauseBtn");
+const canvas         = document.getElementById("game");
+const ctx            = canvas.getContext("2d");
+const scoreEl        = document.getElementById("scoreDisplay");
+const bestScoreEl    = document.getElementById("bestScore");
+const topCountEl     = document.getElementById("topCount");
+const messageEl      = document.getElementById("message");
+const restartBtn     = document.getElementById("restartBtn");
+const pauseBtn       = document.getElementById("pauseBtn");
+const recordsBtn     = document.getElementById("recordsBtn");
+const recordsOverlay = document.getElementById("recordsOverlay");
+const recordsList    = document.getElementById("recordsList");
+const closeRecordsBtn = document.getElementById("closeRecordsBtn");
+const clearRecordsBtn = document.getElementById("clearRecordsBtn");
 
 // ===== НАСТРОЙКИ =====
-const cellSize = 12;
-const tilesX   = canvas.width  / cellSize;
-const tilesY   = canvas.height / cellSize;
+const cellSize   = 12;
+const tilesX     = canvas.width  / cellSize;
+const tilesY     = canvas.height / cellSize;
+const MAX_RECORDS = 10;
 
 // Цвета LCD
 const COLOR_BG    = "#9bbc0f";
@@ -28,6 +36,106 @@ let gameInterval;
 let gameOver;
 let paused;
 
+// ===== РЕКОРДЫ =====
+function loadRecords() {
+  try {
+    const data = localStorage.getItem("snakeRecords");
+    return data ? JSON.parse(data) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveRecords(records) {
+  localStorage.setItem("snakeRecords", JSON.stringify(records));
+}
+
+function addRecord(newScore) {
+  if (newScore === 0) return -1;
+
+  const records = loadRecords();
+
+  const entry = {
+    score: newScore,
+    date: new Date().toLocaleDateString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  };
+
+  records.push(entry);
+  records.sort((a, b) => b.score - a.score);
+
+  // оставляем только TOP 10
+  if (records.length > MAX_RECORDS) {
+    records.length = MAX_RECORDS;
+  }
+
+  saveRecords(records);
+
+  // возвращаем позицию нового рекорда (-1 если не попал в топ)
+  const position = records.findIndex(
+    (r) => r.score === entry.score && r.date === entry.date
+  );
+
+  return position;
+}
+
+function getBestScore() {
+  const records = loadRecords();
+  return records.length > 0 ? records[0].score : 0;
+}
+
+function updateBestScoreDisplay() {
+  bestScoreEl.textContent = pad(getBestScore());
+  topCountEl.textContent = loadRecords().length;
+}
+
+function clearRecords() {
+  localStorage.removeItem("snakeRecords");
+  updateBestScoreDisplay();
+  renderRecordsList(-1);
+}
+
+function renderRecordsList(highlightIndex) {
+  const records = loadRecords();
+  recordsList.innerHTML = "";
+
+  if (records.length === 0) {
+    recordsList.innerHTML =
+      '<li class="empty-message">No records yet.<br>Play a game!</li>';
+    return;
+  }
+
+  records.forEach((record, index) => {
+    const li = document.createElement("li");
+
+    if (index === highlightIndex) {
+      li.classList.add("new-record");
+    }
+
+    li.innerHTML = `
+      <span class="rank">${index + 1}.</span>
+      <span class="record-score">${pad(record.score)}</span>
+      <span class="record-date">${record.date}</span>
+    `;
+
+    recordsList.appendChild(li);
+  });
+}
+
+function showRecords(highlightIndex = -1) {
+  renderRecordsList(highlightIndex);
+  recordsOverlay.classList.add("active");
+}
+
+function hideRecords() {
+  recordsOverlay.classList.remove("active");
+}
+
 // ===== УТИЛИТЫ =====
 function pad(n) {
   return String(n).padStart(4, "0");
@@ -40,7 +148,7 @@ function randomFood() {
       x: Math.floor(Math.random() * tilesX),
       y: Math.floor(Math.random() * tilesY),
     };
-  } while (snake.some(s => s.x === pos.x && s.y === pos.y));
+  } while (snake.some((s) => s.x === pos.x && s.y === pos.y));
   return pos;
 }
 
@@ -77,19 +185,23 @@ function drawSnake() {
 
 function drawGameOver() {
   ctx.fillStyle = COLOR_BG;
-  ctx.fillRect(40, 90, 160, 60);
+  ctx.fillRect(30, 70, 180, 100);
 
   ctx.strokeStyle = COLOR_DARK;
   ctx.lineWidth = 2;
-  ctx.strokeRect(40, 90, 160, 60);
+  ctx.strokeRect(30, 70, 180, 100);
 
   ctx.fillStyle = COLOR_DARK;
   ctx.font = "12px 'Press Start 2P'";
   ctx.textAlign = "center";
-  ctx.fillText("GAME OVER", canvas.width / 2, 118);
+  ctx.fillText("GAME OVER", canvas.width / 2, 100);
 
   ctx.font = "8px 'Press Start 2P'";
-  ctx.fillText("Press RESTART", canvas.width / 2, 140);
+  ctx.fillText("Score: " + pad(score), canvas.width / 2, 120);
+  ctx.fillText("Best: " + pad(getBestScore()), canvas.width / 2, 138);
+
+  ctx.font = "6px 'Press Start 2P'";
+  ctx.fillText("RESTART or RECORDS", canvas.width / 2, 158);
 }
 
 function drawPaused() {
@@ -99,6 +211,13 @@ function drawPaused() {
   ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
 }
 
+function drawNewRecord() {
+  ctx.fillStyle = COLOR_DARK;
+  ctx.font = "8px 'Press Start 2P'";
+  ctx.textAlign = "center";
+  ctx.fillText("★ NEW RECORD! ★", canvas.width / 2, 56);
+}
+
 function draw() {
   drawGrid();
   drawFood();
@@ -106,6 +225,11 @@ function draw() {
 
   if (gameOver) {
     drawGameOver();
+
+    // проверяем новый рекорд
+    if (score > 0 && score >= getBestScore()) {
+      drawNewRecord();
+    }
   }
 
   if (paused && !gameOver) {
@@ -117,6 +241,17 @@ function draw() {
 function endGame() {
   gameOver = true;
   clearInterval(gameInterval);
+
+  // сохраняем рекорд
+  const position = addRecord(score);
+  updateBestScoreDisplay();
+
+  // если попал в топ — показываем таблицу через секунду
+  if (position >= 0) {
+    setTimeout(() => {
+      showRecords(position);
+    }, 1500);
+  }
 }
 
 function move() {
@@ -141,7 +276,7 @@ function move() {
   const body    = willEat ? snake : snake.slice(0, -1);
 
   // столкновение с собой
-  if (body.some(s => s.x === head.x && s.y === head.y)) {
+  if (body.some((s) => s.x === head.x && s.y === head.y)) {
     endGame();
     return;
   }
@@ -172,9 +307,9 @@ function gameLoop() {
 // ===== НАПРАВЛЕНИЕ =====
 function setDirection(dir) {
   const opposites = {
-    up:    "down",
-    down:  "up",
-    left:  "right",
+    up: "down",
+    down: "up",
+    left: "right",
     right: "left",
   };
 
@@ -192,10 +327,12 @@ function togglePause() {
 
 // ===== СБРОС =====
 function resetGame() {
+  hideRecords();
+
   snake = [
     { x: 10, y: 10 },
-    { x: 9,  y: 10 },
-    { x: 8,  y: 10 },
+    { x: 9, y: 10 },
+    { x: 8, y: 10 },
   ];
 
   direction     = "right";
@@ -209,6 +346,7 @@ function resetGame() {
   messageEl.textContent = "";
 
   food = randomFood();
+  updateBestScoreDisplay();
 
   clearInterval(gameInterval);
   gameInterval = setInterval(gameLoop, speed);
@@ -220,12 +358,19 @@ function resetGame() {
 document.addEventListener("keydown", (e) => {
   const key = e.key.toLowerCase();
 
-  if (key === "ц" || key === "w") { e.preventDefault(); setDirection("up");    }
-  if (key === "ы" || key === "s") { e.preventDefault(); setDirection("down");  }
-  if (key === "ф" || key === "a") { e.preventDefault(); setDirection("left");  }
+  // если открыто окно рекордов — закрываем по любой клавише
+  if (recordsOverlay.classList.contains("active")) {
+    hideRecords();
+    return;
+  }
+
+  if (key === "ц" || key === "w") { e.preventDefault(); setDirection("up"); }
+  if (key === "ы" || key === "s") { e.preventDefault(); setDirection("down"); }
+  if (key === "ф" || key === "a") { e.preventDefault(); setDirection("left"); }
   if (key === "в" || key === "d") { e.preventDefault(); setDirection("right"); }
   if (key === "p" || key === "з") togglePause();
   if (key === "r" || key === "к") resetGame();
+  if (key === "t" || key === "е") showRecords();
 });
 
 // ===== ВВОД: D-PAD КНОПКИ =====
@@ -242,6 +387,19 @@ document.querySelectorAll(".dpad-btn").forEach((btn) => {
 // ===== ВВОД: КНОПКИ ДЕЙСТВИЙ =====
 restartBtn.addEventListener("click", resetGame);
 pauseBtn.addEventListener("click", togglePause);
+recordsBtn.addEventListener("click", () => showRecords());
+closeRecordsBtn.addEventListener("click", hideRecords);
+clearRecordsBtn.addEventListener("click", () => {
+  clearRecords();
+});
+
+// закрытие по клику на фон
+recordsOverlay.addEventListener("click", (e) => {
+  if (e.target === recordsOverlay) {
+    hideRecords();
+  }
+});
 
 // ===== ЗАПУСК =====
+updateBestScoreDisplay();
 resetGame();
