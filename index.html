@@ -22,8 +22,8 @@
         <canvas id="game" width="240" height="240"></canvas>
 
         <div class="screen-footer">
-          <span>Menu</span>
-          <span>Select</span>
+          <span>Best: <span id="bestScore">0000</span></span>
+          <span>Top: <span id="topCount">0</span></span>
         </div>
 
         <p id="message"></p>
@@ -47,6 +47,7 @@
       <div class="action-buttons">
         <button class="action-btn" id="restartBtn">RESTART</button>
         <button class="action-btn" id="pauseBtn">PAUSE</button>
+        <button class="action-btn" id="recordsBtn">RECORDS</button>
       </div>
 
       <!-- Цифровая клавиатура (декоративная) -->
@@ -75,6 +76,18 @@
         <span class="speaker-hole"></span>
         <span class="speaker-hole"></span>
         <span class="speaker-hole"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Окно рекордов -->
+  <div class="records-overlay" id="recordsOverlay">
+    <div class="records-window">
+      <h2>🏆 TOP 10</h2>
+      <ol id="recordsList"></ol>
+      <div class="records-actions">
+        <button class="action-btn" id="closeRecordsBtn">CLOSE</button>
+        <button class="action-btn records-clear" id="clearRecordsBtn">CLEAR</button>
       </div>
     </div>
   </div>
