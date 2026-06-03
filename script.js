@@ -23,8 +23,8 @@ const tilesY      = canvas.height / cellSize;
 const MAX_RECORDS = 10;
 const MIN_NAME    = 1;
 const MAX_NAME    = 10;
-const STORAGE_KEY = "snakeRecords";
 const NAME_KEY    = "snakeLastName";
+const RECORDS_PATH = "records";
 
 // Цвета LCD
 const COLOR_BG    = "#9bbc0f";
@@ -42,36 +42,38 @@ let speed;
 let gameInterval;
 let gameOver;
 let paused;
-let lastRecordPosition = -1;
+let cachedBestScore = 0;
+let cachedTopCount  = 0;
 
-// ===== РЕКОРДЫ =====
-function loadRecords() {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch (e) {
-    return [];
+// ===== РЕКОРДЫ В FIREBASE =====
+function loadRecordsOnline(callback) {
+  window.db
+    .ref(RECORDS_PATH)
+    .orderByChild("score")
+    .limitToLast(MAX_RECORDS)
+    .once("value")
+    .then((snapshot) => {
+      const records = [];
+      snapshot.forEach((child) => {
+        records.push({ id: child.key, ...child.val() });
+      });
+      records.sort((a, b) => b.score - a.score);
+      callback(records);
+    })
+    .catch((err) => {
+      console.error("Error loading records:", err);
+      callback([]);
+    });
+}
+
+function addRecordOnline(newScore, playerName, callback) {
+  if (newScore === 0) {
+    callback(-1);
+    return;
   }
-}
-
-function saveRecords(records) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
-}
-
-function getLastName() {
-  return localStorage.getItem(NAME_KEY) || "";
-}
-
-function setLastName(name) {
-  localStorage.setItem(NAME_KEY, name);
-}
-
-function addRecord(newScore, playerName) {
-  if (newScore === 0) return -1;
-
-  const records = loadRecords();
 
   const name = playerName.trim().toUpperCase().slice(0, MAX_NAME);
+  const timestamp = Date.now();
 
   const entry = {
     name: name,
@@ -81,30 +83,65 @@ function addRecord(newScore, playerName) {
       month: "2-digit",
       year: "2-digit",
     }),
-    _id: Date.now(),
+    timestamp: timestamp,
   };
 
-  records.push(entry);
-  records.sort((a, b) => b.score - a.score);
+  window.db
+    .ref(RECORDS_PATH)
+    .push(entry)
+    .then(() => {
+      window.db
+        .ref(RECORDS_PATH)
+        .orderByChild("score")
+        .once("value")
+        .then((snapshot) => {
+          const all = [];
+          snapshot.forEach((child) => {
+            all.push({ id: child.key, ...child.val() });
+          });
+          all.sort((a, b) => b.score - a.score);
 
-  if (records.length > MAX_RECORDS) {
-    records.length = MAX_RECORDS;
-  }
+          // удаляем записи за пределами TOP 10
+          if (all.length > MAX_RECORDS) {
+            const toDelete = all.slice(MAX_RECORDS);
+            toDelete.forEach((r) => {
+              window.db.ref(RECORDS_PATH + "/" + r.id).remove();
+            });
+          }
 
-  saveRecords(records);
+          const top = all.slice(0, MAX_RECORDS);
+          const position = top.findIndex(
+            (r) =>
+              r.timestamp === timestamp &&
+              r.name === name &&
+              r.score === newScore
+          );
 
-  const position = records.findIndex((r) => r._id === entry._id);
-  return position;
-}
-
-function getBestScore() {
-  const records = loadRecords();
-  return records.length > 0 ? records[0].score : 0;
+          callback(position);
+        });
+    })
+    .catch((err) => {
+      console.error("Error saving record:", err);
+      callback(-1);
+    });
 }
 
 function updateBestScoreDisplay() {
-  bestScoreEl.textContent = pad(getBestScore());
-  topCountEl.textContent = loadRecords().length;
+  loadRecordsOnline((records) => {
+    cachedBestScore = records.length > 0 ? records[0].score : 0;
+    cachedTopCount  = records.length;
+    bestScoreEl.textContent = pad(cachedBestScore);
+    topCountEl.textContent  = cachedTopCount;
+  });
+}
+
+// ===== ПОСЛЕДНИЙ НИК =====
+function getLastName() {
+  return localStorage.getItem(NAME_KEY) || "";
+}
+
+function setLastName(name) {
+  localStorage.setItem(NAME_KEY, name);
 }
 
 // ===== ВАЛИДАЦИЯ НИКА =====
@@ -119,7 +156,6 @@ function validateName(name) {
     return { valid: false, error: "Max " + MAX_NAME + " characters" };
   }
 
-  // разрешаем буквы, цифры, пробелы, дефисы, подчёркивания
   const allowed = /^[a-zA-Zа-яА-ЯёЁ0-9 _\-]+$/;
   if (!allowed.test(trimmed)) {
     return { valid: false, error: "Letters, numbers, - _ only" };
@@ -147,15 +183,12 @@ function showNameError(text) {
 
 function clearNameError() {
   const errorEl = document.querySelector(".name-error");
-  if (errorEl) {
-    errorEl.textContent = "";
-  }
+  if (errorEl) errorEl.textContent = "";
   nameInput.classList.remove("error");
 }
 
 // ===== РЕНДЕР РЕКОРДОВ =====
-function renderRecordsList(highlightIndex) {
-  const records = loadRecords();
+function renderRecordsListFromData(records, highlightIndex) {
   recordsList.innerHTML = "";
 
   if (records.length === 0) {
@@ -198,7 +231,6 @@ function showNameInput() {
   nameInput.value = lastName;
 
   clearNameError();
-
   nameOverlay.classList.add("active");
 
   setTimeout(() => {
@@ -213,8 +245,12 @@ function hideNameInput() {
 }
 
 function showRecords(highlightIndex = -1) {
-  renderRecordsList(highlightIndex);
+  recordsList.innerHTML = '<li class="empty-message">Loading...</li>';
   recordsOverlay.classList.add("active");
+
+  loadRecordsOnline((records) => {
+    renderRecordsListFromData(records, highlightIndex);
+  });
 }
 
 function hideRecords() {
@@ -224,29 +260,28 @@ function hideRecords() {
 function submitName() {
   const name = nameInput.value.trim();
 
-  // валидация
   const result = validateName(name);
-
   if (!result.valid) {
     showNameError(result.error);
     nameInput.focus();
-    return; // не закрываем окно, ждём правильный ник
+    return;
   }
 
-  // сохраняем ник для следующей игры
   setLastName(name);
-
   hideNameInput();
 
-  const position = addRecord(score, name);
-  lastRecordPosition = position;
-  updateBestScoreDisplay();
+  messageEl.textContent = "Saving...";
 
-  if (position >= 0) {
-    setTimeout(() => {
-      showRecords(position);
-    }, 300);
-  }
+  addRecordOnline(score, name, (position) => {
+    messageEl.textContent = "";
+    updateBestScoreDisplay();
+
+    if (position >= 0) {
+      setTimeout(() => {
+        showRecords(position);
+      }, 300);
+    }
+  });
 }
 
 // ===== УТИЛИТЫ =====
@@ -316,7 +351,7 @@ function drawGameOver() {
 
   ctx.font = "8px 'Press Start 2P'";
   ctx.fillText("Score: " + pad(score), canvas.width / 2, 120);
-  ctx.fillText("Best: " + pad(getBestScore()), canvas.width / 2, 138);
+  ctx.fillText("Best: " + pad(cachedBestScore), canvas.width / 2, 138);
 
   ctx.font = "6px 'Press Start 2P'";
   ctx.fillText("RESTART or RECORDS", canvas.width / 2, 158);
@@ -344,7 +379,7 @@ function draw() {
   if (gameOver) {
     drawGameOver();
 
-    if (score > 0 && score >= getBestScore()) {
+    if (score > 0 && score >= cachedBestScore) {
       drawNewRecord();
     }
   }
@@ -451,7 +486,6 @@ function resetGame() {
   speed = 150;
   gameOver = false;
   paused = false;
-  lastRecordPosition = -1;
 
   scoreEl.textContent = pad(score);
   messageEl.textContent = "";
@@ -465,7 +499,6 @@ function resetGame() {
   draw();
 }
 
-// ===== ПРОВЕРКА: ОВЕРЛЕЙ ОТКРЫТ? =====
 function isOverlayOpen() {
   return (
     nameOverlay.classList.contains("active") ||
@@ -477,7 +510,6 @@ function isOverlayOpen() {
 document.addEventListener("keydown", (e) => {
   const key = e.key.toLowerCase();
 
-  // окно ввода ника
   if (nameOverlay.classList.contains("active")) {
     if (key === "enter") {
       e.preventDefault();
@@ -486,13 +518,11 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  // окно рекордов
   if (recordsOverlay.classList.contains("active")) {
     hideRecords();
     return;
   }
 
-  // движение: стрелки + WASD + русская раскладка
   if (key === "arrowup"    || key === "w" || key === "ц") {
     e.preventDefault();
     setDirection("up");
@@ -510,17 +540,12 @@ document.addEventListener("keydown", (e) => {
     setDirection("right");
   }
 
-  // пауза
   if (key === "p" || key === "з") togglePause();
-
-  // рестарт
   if (key === "r" || key === "к") resetGame();
-
-  // рекорды
   if (key === "t" || key === "е") showRecords();
 });
 
-// ===== ВВОД: D-PAD КНОПКИ =====
+// ===== ВВОД: D-PAD =====
 document.querySelectorAll(".dpad-btn").forEach((btn) => {
   const handler = (e) => {
     e.preventDefault();
@@ -532,31 +557,18 @@ document.querySelectorAll(".dpad-btn").forEach((btn) => {
   btn.addEventListener("touchstart", handler, { passive: false });
 });
 
-// ===== ВВОД: КНОПКИ ДЕЙСТВИЙ =====
+// ===== ВВОД: КНОПКИ =====
 restartBtn.addEventListener("click", resetGame);
 pauseBtn.addEventListener("click", togglePause);
 recordsBtn.addEventListener("click", () => showRecords());
-
-// ===== ВВОД: ОКНО НИКА =====
 saveNameBtn.addEventListener("click", submitName);
 
-// очищаем ошибку при вводе
-nameInput.addEventListener("input", () => {
-  clearNameError();
-});
+nameInput.addEventListener("input", clearNameError);
+nameInput.addEventListener("keydown", (e) => e.stopPropagation());
 
-// не даём клавишам влиять на игру
-nameInput.addEventListener("keydown", (e) => {
-  e.stopPropagation();
-});
-
-// ===== ВВОД: ОКНО РЕКОРДОВ =====
 closeRecordsBtn.addEventListener("click", hideRecords);
-
 recordsOverlay.addEventListener("click", (e) => {
-  if (e.target === recordsOverlay) {
-    hideRecords();
-  }
+  if (e.target === recordsOverlay) hideRecords();
 });
 
 // ===== ЗАПУСК =====
