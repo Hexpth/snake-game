@@ -80,14 +80,34 @@
     </div>
   </div>
 
+  <!-- Окно ввода ника -->
+  <div class="overlay" id="nameOverlay">
+    <div class="overlay-window name-window">
+      <h2>GAME OVER</h2>
+      <p class="name-score">Score: <span id="finalScore">0000</span></p>
+      <p class="name-label">Enter your name:</p>
+      <input
+        type="text"
+        id="nameInput"
+        maxlength="10"
+        placeholder="Player"
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <p class="name-hint">Press Enter to save</p>
+      <div class="overlay-actions">
+        <button class="action-btn overlay-btn" id="saveNameBtn">SAVE</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Окно рекордов -->
-  <div class="records-overlay" id="recordsOverlay">
-    <div class="records-window">
+  <div class="overlay" id="recordsOverlay">
+    <div class="overlay-window records-window">
       <h2>🏆 TOP 10</h2>
       <ol id="recordsList"></ol>
-      <div class="records-actions">
-        <button class="action-btn" id="closeRecordsBtn">CLOSE</button>
-        <button class="action-btn records-clear" id="clearRecordsBtn">CLEAR</button>
+      <div class="overlay-actions">
+        <button class="action-btn overlay-btn" id="closeRecordsBtn">CLOSE</button>
       </div>
     </div>
   </div>
