@@ -11,11 +11,10 @@
   <div class="phone">
     <div class="brand">NOKIA</div>
 
-    <!-- Экран -->
     <div class="screen-bezel">
       <div class="screen">
         <div class="screen-header">
-          <span class="title">Classic Snake</span>
+          <span class="title">Snake II</span>
           <span id="scoreDisplay">0000</span>
         </div>
 
@@ -30,10 +29,7 @@
       </div>
     </div>
 
-    <!-- Управление -->
     <div class="controls">
-
-      <!-- D-PAD -->
       <div class="dpad">
         <div class="dpad-circle"></div>
         <div class="dpad-center"></div>
@@ -43,14 +39,12 @@
         <button class="dpad-btn dpad-right" data-dir="right">▶</button>
       </div>
 
-      <!-- Кнопки действий -->
       <div class="action-buttons">
         <button class="action-btn" id="restartBtn">RESTART</button>
         <button class="action-btn" id="pauseBtn">PAUSE</button>
         <button class="action-btn" id="recordsBtn">RECORDS</button>
       </div>
 
-      <!-- Цифровая клавиатура (декоративная) -->
       <div class="numpad">
         <div class="num-btn">1</div>
         <div class="num-btn">2</div>
@@ -67,7 +61,6 @@
       </div>
     </div>
 
-    <!-- Динамик -->
     <div class="phone-bottom">
       <div class="speaker-holes">
         <span class="speaker-hole"></span>
@@ -111,6 +104,26 @@
       </div>
     </div>
   </div>
+
+  <!-- ===== FIREBASE ===== -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDTSinXC-g-OgVt6VgQgGFBl4JrZCB8usg",
+      authDomain: "snake-game-c7c03.firebaseapp.com",
+      databaseURL: "https://snake-game-c7c03-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "snake-game-c7c03",
+      storageBucket: "snake-game-c7c03.firebasestorage.app",
+      messagingSenderId: "85376333287",
+      appId: "1:85376333287:web:66cb401b108c67935e7942",
+      measurementId: "G-96JCW0ETTT"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    window.db = firebase.database();
+  </script>
 
   <script src="script.js"></script>
 </body>
