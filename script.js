@@ -364,13 +364,13 @@ document.addEventListener("keydown", (e) => {
     return;
   }
 
-  if (key === "ц" || key === "w") { e.preventDefault(); setDirection("up"); }
-  if (key === "ы" || key === "s") { e.preventDefault(); setDirection("down"); }
-  if (key === "ф" || key === "a") { e.preventDefault(); setDirection("left"); }
-  if (key === "в" || key === "d") { e.preventDefault(); setDirection("right"); }
-  if (key === "p" || key === "з") togglePause();
-  if (key === "r" || key === "к") resetGame();
-  if (key === "t" || key === "е") showRecords();
+  if (key === "arrowup"    || key === "w") { e.preventDefault(); setDirection("up"); }
+  if (key === "arrowdown"  || key === "s") { e.preventDefault(); setDirection("down"); }
+  if (key === "arrowleft"  || key === "a") { e.preventDefault(); setDirection("left"); }
+  if (key === "arrowright" || key === "d") { e.preventDefault(); setDirection("right"); }
+  if (key === "p") togglePause();
+  if (key === "r") resetGame();
+  if (key === "t") showRecords();
 });
 
 // ===== ВВОД: D-PAD КНОПКИ =====
