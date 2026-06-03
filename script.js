@@ -26,6 +26,14 @@ const MAX_NAME    = 10;
 const NAME_KEY    = "snakeLastName";
 const RECORDS_PATH = "records";
 
+// === БОНУСНЫЙ ШАРИК ===
+const BONUS_SCORE       = 5;     // сколько очков даёт
+const BONUS_LIFETIME    = 6000;  // живёт 6 секунд
+const BONUS_WARN_TIME   = 2000;  // последние 2 сек — мигает быстро
+const BONUS_MIN_DELAY   = 8000;  // минимум 8 сек между появлениями
+const BONUS_MAX_DELAY   = 15000; // максимум 15 сек между появлениями
+const BONUS_SIZE        = 2;     // размер 2x2 клетки
+
 // Цвета LCD
 const COLOR_BG    = "#9bbc0f";
 const COLOR_LIGHT = "#8bac0f";
@@ -37,6 +45,9 @@ let snake;
 let direction;
 let nextDirection;
 let food;
+let bonus = null;          // {x, y, spawnedAt}
+let bonusTimer = null;     // таймер исчезновения
+let bonusSpawnTimer = null; // таймер появления
 let score;
 let speed;
 let gameInterval;
@@ -101,7 +112,6 @@ function addRecordOnline(newScore, playerName, callback) {
           });
           all.sort((a, b) => b.score - a.score);
 
-          // удаляем записи за пределами TOP 10
           if (all.length > MAX_RECORDS) {
             const toDelete = all.slice(MAX_RECORDS);
             toDelete.forEach((r) => {
@@ -300,6 +310,100 @@ function randomFood() {
   return pos;
 }
 
+// проверяет — занята ли клетка (змейкой, едой или бонусом)
+function isCellOccupied(x, y) {
+  if (snake.some((s) => s.x === x && s.y === y)) return true;
+  if (food && food.x === x && food.y === y) return true;
+  if (bonus) {
+    for (let dx = 0; dx < BONUS_SIZE; dx++) {
+      for (let dy = 0; dy < BONUS_SIZE; dy++) {
+        if (bonus.x + dx === x && bonus.y + dy === y) return true;
+      }
+    }
+  }
+  return false;
+}
+
+// ===== БОНУСНЫЙ ШАРИК =====
+function trySpawnBonus() {
+  if (gameOver || paused || bonus) return;
+
+  // ищем свободное место под шарик 2x2
+  const maxX = tilesX - BONUS_SIZE;
+  const maxY = tilesY - BONUS_SIZE;
+
+  let attempts = 0;
+  while (attempts < 50) {
+    const x = Math.floor(Math.random() * maxX);
+    const y = Math.floor(Math.random() * maxY);
+
+    let free = true;
+    for (let dx = 0; dx < BONUS_SIZE && free; dx++) {
+      for (let dy = 0; dy < BONUS_SIZE && free; dy++) {
+        if (isCellOccupied(x + dx, y + dy)) free = false;
+      }
+    }
+
+    if (free) {
+      bonus = {
+        x: x,
+        y: y,
+        spawnedAt: Date.now(),
+      };
+
+      // таймер исчезновения
+      bonusTimer = setTimeout(() => {
+        bonus = null;
+        bonusTimer = null;
+        scheduleNextBonus();
+      }, BONUS_LIFETIME);
+
+      return;
+    }
+
+    attempts++;
+  }
+
+  // если не нашли места — попробуем позже
+  scheduleNextBonus();
+}
+
+function scheduleNextBonus() {
+  if (bonusSpawnTimer) clearTimeout(bonusSpawnTimer);
+
+  const delay =
+    BONUS_MIN_DELAY +
+    Math.random() * (BONUS_MAX_DELAY - BONUS_MIN_DELAY);
+
+  bonusSpawnTimer = setTimeout(trySpawnBonus, delay);
+}
+
+function clearBonus() {
+  bonus = null;
+  if (bonusTimer) {
+    clearTimeout(bonusTimer);
+    bonusTimer = null;
+  }
+  if (bonusSpawnTimer) {
+    clearTimeout(bonusSpawnTimer);
+    bonusSpawnTimer = null;
+  }
+}
+
+// проверяет — съел ли бонус головой
+function checkBonusEaten(head) {
+  if (!bonus) return false;
+
+  for (let dx = 0; dx < BONUS_SIZE; dx++) {
+    for (let dy = 0; dy < BONUS_SIZE; dy++) {
+      if (head.x === bonus.x + dx && head.y === bonus.y + dy) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 // ===== РИСОВАНИЕ =====
 function drawCell(x, y, color) {
   ctx.fillStyle = color;
@@ -328,6 +432,47 @@ function drawGrid() {
 function drawFood() {
   const blink = Math.floor(Date.now() / 300) % 2 === 0;
   drawCell(food.x, food.y, blink ? COLOR_DARK : COLOR_MID);
+}
+
+function drawBonus() {
+  if (!bonus) return;
+
+  const elapsed = Date.now() - bonus.spawnedAt;
+  const remaining = BONUS_LIFETIME - elapsed;
+
+  // если осталось < 2 сек — мигает быстро
+  const blinkSpeed = remaining < BONUS_WARN_TIME ? 100 : 300;
+  const visible = Math.floor(Date.now() / blinkSpeed) % 2 === 0;
+
+  if (!visible) return;
+
+  const px = bonus.x * cellSize;
+  const py = bonus.y * cellSize;
+  const size = cellSize * BONUS_SIZE;
+
+  // рисуем круг
+  ctx.fillStyle = COLOR_DARK;
+  ctx.beginPath();
+  ctx.arc(
+    px + size / 2,
+    py + size / 2,
+    size / 2 - 2,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
+
+  // блик в центре
+  ctx.fillStyle = COLOR_BG;
+  ctx.beginPath();
+  ctx.arc(
+    px + size / 2 - 2,
+    py + size / 2 - 2,
+    2,
+    0,
+    Math.PI * 2
+  );
+  ctx.fill();
 }
 
 function drawSnake() {
@@ -371,14 +516,48 @@ function drawNewRecord() {
   ctx.fillText("★ NEW RECORD! ★", canvas.width / 2, 56);
 }
 
+// "+5" эффект когда съел бонус
+let popupText = null;
+function showPopup(text, x, y) {
+  popupText = {
+    text: text,
+    x: x,
+    y: y,
+    startedAt: Date.now(),
+  };
+}
+
+function drawPopup() {
+  if (!popupText) return;
+
+  const elapsed = Date.now() - popupText.startedAt;
+  if (elapsed > 800) {
+    popupText = null;
+    return;
+  }
+
+  const progress = elapsed / 800;
+  const offsetY = -progress * 20;
+
+  ctx.fillStyle = COLOR_DARK;
+  ctx.font = "10px 'Press Start 2P'";
+  ctx.textAlign = "center";
+  ctx.fillText(
+    popupText.text,
+    popupText.x * cellSize,
+    popupText.y * cellSize + offsetY
+  );
+}
+
 function draw() {
   drawGrid();
   drawFood();
+  drawBonus();
   drawSnake();
+  drawPopup();
 
   if (gameOver) {
     drawGameOver();
-
     if (score > 0 && score >= cachedBestScore) {
       drawNewRecord();
     }
@@ -393,6 +572,7 @@ function draw() {
 function endGame() {
   gameOver = true;
   clearInterval(gameInterval);
+  clearBonus();
 
   if (score > 0) {
     setTimeout(() => {
@@ -419,7 +599,9 @@ function move() {
   }
 
   const willEat = head.x === food.x && head.y === food.y;
-  const body = willEat ? snake : snake.slice(0, -1);
+  const willEatBonus = checkBonusEaten(head);
+
+  const body = (willEat || willEatBonus) ? snake : snake.slice(0, -1);
 
   if (body.some((s) => s.x === head.x && s.y === head.y)) {
     endGame();
@@ -428,6 +610,16 @@ function move() {
 
   snake.unshift(head);
 
+  // съели бонус
+  if (willEatBonus) {
+    score += BONUS_SCORE;
+    scoreEl.textContent = pad(score);
+    showPopup("+" + BONUS_SCORE, bonus.x + 1, bonus.y);
+    clearBonus();
+    scheduleNextBonus();
+  }
+
+  // съели обычную еду
   if (willEat) {
     score++;
     scoreEl.textContent = pad(score);
@@ -438,7 +630,10 @@ function move() {
       clearInterval(gameInterval);
       gameInterval = setInterval(gameLoop, speed);
     }
-  } else {
+  }
+
+  // если не съели ничего и не растём — обычная логика
+  if (!willEat && !willEatBonus) {
     snake.pop();
   }
 }
@@ -473,6 +668,7 @@ function togglePause() {
 function resetGame() {
   hideRecords();
   hideNameInput();
+  clearBonus();
 
   snake = [
     { x: 10, y: 10 },
@@ -486,6 +682,7 @@ function resetGame() {
   speed = 150;
   gameOver = false;
   paused = false;
+  popupText = null;
 
   scoreEl.textContent = pad(score);
   messageEl.textContent = "";
@@ -495,6 +692,9 @@ function resetGame() {
 
   clearInterval(gameInterval);
   gameInterval = setInterval(gameLoop, speed);
+
+  // запускаем таймер появления бонуса
+  scheduleNextBonus();
 
   draw();
 }
