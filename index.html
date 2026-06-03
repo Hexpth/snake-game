@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Snake — Nokia 3310</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="phone">
+    <div class="brand">NOKIA</div>
+
+    <!-- Экран -->
+    <div class="screen-bezel">
+      <div class="screen">
+        <div class="screen-header">
+          <span class="title">Snake II</span>
+          <span id="scoreDisplay">0000</span>
+        </div>
+
+        <canvas id="game" width="240" height="240"></canvas>
+
+        <div class="screen-footer">
+          <span>Menu</span>
+          <span>Select</span>
+        </div>
+
+        <p id="message"></p>
+      </div>
+    </div>
+
+    <!-- Управление -->
+    <div class="controls">
+
+      <!-- D-PAD -->
+      <div class="dpad">
+        <div class="dpad-circle"></div>
+        <div class="dpad-center"></div>
+        <button class="dpad-btn dpad-up"    data-dir="up">▲</button>
+        <button class="dpad-btn dpad-down"  data-dir="down">▼</button>
+        <button class="dpad-btn dpad-left"  data-dir="left">◀</button>
+        <button class="dpad-btn dpad-right" data-dir="right">▶</button>
+      </div>
+
+      <!-- Кнопки действий -->
+      <div class="action-buttons">
+        <button class="action-btn" id="restartBtn">RESTART</button>
+        <button class="action-btn" id="pauseBtn">PAUSE</button>
+      </div>
+
+      <!-- Цифровая клавиатура (декоративная) -->
+      <div class="numpad">
+        <div class="num-btn">1</div>
+        <div class="num-btn">2</div>
+        <div class="num-btn">3</div>
+        <div class="num-btn">4</div>
+        <div class="num-btn">5</div>
+        <div class="num-btn">6</div>
+        <div class="num-btn">7</div>
+        <div class="num-btn">8</div>
+        <div class="num-btn">9</div>
+        <div class="num-btn">*</div>
+        <div class="num-btn">0</div>
+        <div class="num-btn">#</div>
+      </div>
+    </div>
+
+    <!-- Динамик -->
+    <div class="phone-bottom">
+      <div class="speaker-holes">
+        <span class="speaker-hole"></span>
+        <span class="speaker-hole"></span>
+        <span class="speaker-hole"></span>
+        <span class="speaker-hole"></span>
+        <span class="speaker-hole"></span>
+        <span class="speaker-hole"></span>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #2c3e50;
+  font-family: 'Press Start 2P', monospace;
+  padding: 20px;
+}
+
+/* ===== КОРПУС ТЕЛЕФОНА ===== */
+.phone {
+  width: 320px;
+  background: #bdc3c7;
+  border-radius: 30px 30px 40px 40px;
+  padding: 18px 16px 30px;
+  box-shadow:
+    inset 0 2px 4px rgba(255,255,255,0.5),
+    inset 0 -4px 6px rgba(0,0,0,0.15),
+    0 20px 60px rgba(0,0,0,0.5),
+    0 0 0 3px #95a5a6;
+  position: relative;
+}
+
+.brand {
+  text-align: center;
+  font-size: 11px;
+  color: #555;
+  letter-spacing: 4px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+/* ===== ЭКРАН ===== */
+.screen-bezel {
+  background: #7f8c8d;
+  border-radius: 8px;
+  padding: 10px 10px 14px;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.4);
+}
+
+.screen {
+  background: #9bbc0f;
+  border-radius: 4px;
+  padding: 8px;
+  position: relative;
+  box-shadow:
+    inset 0 0 20px rgba(0,0,0,0.08);
+}
+
+.screen-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 7px;
+  color: #306230;
+  margin-bottom: 6px;
+  padding: 0 2px;
+}
+
+.screen-header .title {
+  font-size: 8px;
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.screen-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 7px;
+  color: #306230;
+  margin-top: 6px;
+  padding: 0 2px;
+}
+
+#message {
+  font-size: 7px;
+  color: #306230;
+  text-align: center;
+  min-height: 12px;
+  margin-top: 4px;
+}
+
+/* ===== УПРАВЛЕНИЕ ===== */
+.controls {
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* D-PAD */
+.dpad {
+  width: 130px;
+  height: 130px;
+  position: relative;
+  margin-bottom: 6px;
+}
+
+.dpad-circle {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #95a5a6;
+  box-shadow:
+    inset 0 2px 4px rgba(255,255,255,0.3),
+    inset 0 -2px 4px rgba(0,0,0,0.2),
+    0 4px 8px rgba(0,0,0,0.2);
+}
+
+.dpad-center {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #7f8c8d;
+  box-shadow:
+    inset 0 2px 3px rgba(0,0,0,0.3);
+  z-index: 2;
+}
+
+.dpad-btn {
+  position: absolute;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 3;
+  font-size: 16px;
+  color: #444;
+  display: grid;
+  place-items: center;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dpad-btn:active {
+  color: #222;
+  transform: scale(0.9);
+}
+
+.dpad-up {
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 34px;
+}
+
+.dpad-down {
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40px;
+  height: 34px;
+}
+
+.dpad-left {
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 40px;
+}
+
+.dpad-right {
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 40px;
+}
+
+/* Кнопки действий */
+.action-buttons {
+  display: flex;
+  gap: 24px;
+}
+
+.action-btn {
+  width: 56px;
+  height: 28px;
+  border: none;
+  border-radius: 14px;
+  background: #95a5a6;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 6px;
+  color: #444;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.3),
+    0 3px 6px rgba(0,0,0,0.2);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.action-btn:active {
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Цифровая клавиатура */
+.numpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+  width: 200px;
+}
+
+.num-btn {
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: #a4b0b3;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: #444;
+  cursor: default;
+  display: grid;
+  place-items: center;
+  box-shadow:
+    inset 0 1px 2px rgba(255,255,255,0.4),
+    0 2px 4px rgba(0,0,0,0.15);
+}
+
+/* Динамик */
+.phone-bottom {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.speaker-holes {
+  display: flex;
+  gap: 4px;
+}
+
+.speaker-hole {
+  width: 4px;
+  height: 4px;
+  background: #888;
+  border-radius: 50%;
+}
+
+/* ===== АДАПТИВ ===== */
+@media (max-width: 380px) {
+  .phone {
+    width: 290px;
+  }
+
+  .dpad {
+    width: 110px;
+    height: 110px;
+  }
+
+  .numpad {
+    width: 170px;
+  }
+}
