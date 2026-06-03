@@ -38,12 +38,13 @@ open index.html
 
 | Key | Action |
 |-----|--------|
-| ↑ W | Move up |
-| ↓ S | Move down |
-| ← A | Move left |
-| → D | Move right |
+| W | Move up |
+| S | Move down |
+| A | Move left |
+| D | Move right |
 | P | Pause / Resume |
 | R | Restart |
+| T | Table with results |
 
 On mobile — use the **D-Pad** buttons on the phone screen.
 
